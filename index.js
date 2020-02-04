@@ -36,6 +36,51 @@ function promptUser() {
   ]);
 }
 
+// Prompt user when the entered GitHub user name can't be found
+
+function retryPrompt() {
+  return inquirer.prompt({
+    type: "list",
+    name: "answer",
+    message: "I couldn't find data for that username on GitHub. Want to try again?",
+    choices: [
+      "Yes!",
+      "No."
+    ]
+  });
+}
+
+// Handle null values in the GitHub data
+
+function generateHeader(githubData) {
+  const locationLink = githubData.data.location ? 
+    `<a href="https://www.google.com/maps/place/${githubData.data.location}">
+        ${githubData.data.location}
+      </a>
+    `:
+    "";
+  const blogLink = githubData.data.blog ?
+    `<a href="${githubData.data.blog}">Blog</a>`:
+    "";
+  return `
+    <header>
+      <div class="container">
+        <div class="row">
+          <div class="col text-center user-color header-position">
+            <img src="${githubData.data.avatar_url}" height="175" />
+            <h1>${githubData.data.name}</h1>
+            <p class="header-links d-flex justify-content-center flex-wrap">
+              ${locationLink}
+              <a href="${githubData.data.html_url}">GitHub Profile</a>
+              ${blogLink}
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+  `
+}
+
 // Set up HTML profile that data will be plugged into later
 // populated with the following:
 // Profile image
@@ -118,25 +163,7 @@ function profileHTML(userData, githubData, githubStarsData) {
     </style>
   </head>
   <body>
-    <header>
-      <div class="container">
-        <div class="row">
-          <div class="col text-center user-color header-position">
-            <img src="${githubData.data.avatar_url}" height="175" />
-            <h1>${githubData.data.name}</h1>
-            <p class="header-links d-flex justify-content-center flex-wrap">
-              <a
-                href="https://www.google.com/maps/place/${githubData.data.location}"
-              >
-                ${githubData.data.location}
-              </a>
-              <a href="${githubData.data.html_url}">GitHub Profile</a>
-              <a href="${githubData.data.blog}">Blog</a>
-            </p>
-          </div>
-        </div>
-      </div>
-    </header>
+    ${generateHeader(githubData)}
     <section>
       <div class="container">
         <div class="row">
@@ -214,7 +241,13 @@ async function init() {
     await browser.close();
     process.exit();
   } catch (err) {
-    console.log(err);
+    if (err.response.data.message === "Not Found") {
+      const userResponse = await retryPrompt();
+      if (userResponse.answer === "Yes!") {
+        return init();
+      }
+    }
+    // console.log(err);
   }
 }
 
